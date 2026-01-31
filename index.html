@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EDORA | Gestión Documental</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar glass">
+            <div class="logo">
+                <span class="logo-icon">💠</span>
+                <div>
+                    <span class="logo-text">EDORA</span>
+                    <span class="logo-subtitle">Eminent Documentary Reporting Assistant</span>
+                </div>
+            </div>
+            <nav class="nav-menu">
+                <div class="nav-item active" data-view="dashboard">🏠 Dashboard</div>
+                <div class="nav-item" data-view="kanban">📋 Kanban</div>
+                <div class="nav-item" data-view="gantt">📊 Gantt</div>
+                <div class="nav-item" id="logout-btn"
+                    style="margin-top: auto; border-top: 1px solid var(--glass-border); padding-top: 1rem;">🚪 Cerrar
+                    Sesión</div>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="alerts-container">
+                    <div id="alerts-trigger" class="alert-badge" style="cursor: pointer; position: relative;">
+                        <span id="alerts-icon">🔔</span>
+                        <span id="alerts-label">Notificaciones</span>
+                        <span id="alerts-count" class="badge-count hidden">0</span>
+                    </div>
+                    <div id="alerts-dropdown" class="alerts-dropdown hidden">
+                        <div class="alerts-header">
+                            <span>Alertas y Recordatorios</span>
+                            <button id="close-alerts"
+                                style="background:none; border:none; color:inherit; cursor:pointer;">✖</button>
+                        </div>
+                        <ul id="alert-list-items" class="alert-list">
+                            <!-- [x] Implement Authentication Guard in `index.html`
+    - [x] Update `app.js` to redirect to `login.html` if no session found
+    - [x] Add logout functionality to the sidebar
+- [/] Verify Login Flow
+    - [/] Test successful login redirect
+    - [/] Test unauthorized access redirect
+    - [/] Verify responsive design and aesthetics -->
+                            <!-- JS populated -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header glass">
+                <h1 id="view-title">Dashboard</h1>
+                <div class="header-actions">
+                    <button id="import-excel-btn" class="btn btn-secondary">📁 Importar Excel</button>
+                    <input type="file" id="excel-input" hidden accept=".xlsx, .xls">
+                    <button id="add-doc-btn" class="btn btn-primary">+ Nuevo Documento</button>
+                </div>
+            </header>
+
+            <section id="view-dashboard" class="view">
+                <!-- Filters Section -->
+                <div class="dashboard-filters glass"
+                    style="margin-bottom: 1.5rem; padding: 1rem; display: flex; gap: 1rem; align-items: center;">
+                    <div class="filter-group">
+                        <label style="font-size: 0.8rem; color: var(--text-muted); margin-right: 0.5rem;">Filtrar por
+                            Área:</label>
+                        <select id="filter-area" class="glass"
+                            style="padding: 0.5rem; border-radius: 8px; color: var(--text-main); background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);">
+                            <option value="all">Todas</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label style="font-size: 0.8rem; color: var(--text-muted); margin-right: 0.5rem;">Filtrar por
+                            Etapa:</label>
+                        <select id="filter-stage" class="glass"
+                            style="padding: 0.5rem; border-radius: 8px; color: var(--text-main); background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);">
+                            <option value="all">Todas</option>
+                            <option value="todo">Por Hacer</option>
+                            <option value="in-progress">En Proceso</option>
+                            <option value="review-ci">Revisado por CI</option>
+                            <option value="review-area">Revisado por el área</option>
+                            <option value="released">Liberado</option>
+                            <option value="intranet">Cargado a INTRANET</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="stat-grid" style="margin-bottom: 1.5rem;">
+                    <div class="stat-card glass">
+                        <span class="stat-value" id="stat-total">0</span>
+                        <span class="stat-label">Total Documentos</span>
+                    </div>
+                    <div class="stat-card glass">
+                        <span class="stat-value" id="stat-pending">0</span>
+                        <span class="stat-label">Pendientes</span>
+                    </div>
+                    <div class="stat-card glass">
+                        <span class="stat-value" id="stat-critical">0</span>
+                        <span class="stat-label">Críticos (< 5 días)</span>
+                    </div>
+                </div>
+
+                <!-- Main Dashboard Grid: Left (Bar + Total) | Right (Pies) -->
+                <div class="dashboard-main-grid"
+                    style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+
+                    <!-- Left Column -->
+                    <div class="left-column" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <!-- Bar Chart -->
+                        <div class="chart-container glass" style="padding: 1.5rem; height: 350px;">
+                            <h3 id="bar-chart-title"
+                                style="margin-bottom: 1rem; color: var(--text-main); font-size: 1.1rem;">Grafico de
+                                avance de Todas</h3>
+                            <canvas id="dashboardChart"></canvas>
+                        </div>
+
+                        <!-- Total Terminados -->
+                        <div class="glass" style="padding: 1.5rem; text-align: center;">
+                            <h3 style="color: var(--text-muted); font-size: 1rem; margin-bottom: 0.5rem;">Total de
+                                documentos terminados</h3>
+                            <div id="intranet-count"
+                                style="font-size: 2.5rem; font-weight: 700; color: var(--accent-success, #10b981);">0
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Stacked Pie Charts -->
+                    <div class="right-column" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <div class="chart-container glass"
+                            style="padding: 1.5rem; height: 300px; display: flex; flex-direction: column; align-items: center;">
+                            <h4 style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.9rem;">Avance de
+                                Documentación</h4>
+                            <canvas id="progressPieChart"></canvas>
+                        </div>
+                        <div class="chart-container glass"
+                            style="padding: 1.5rem; height: 300px; display: flex; flex-direction: column; align-items: center;">
+                            <h4 style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.9rem;">Carga en
+                                Intranet</h4>
+                            <canvas id="intranetPieChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-sections">
+                    <div class="section-card glass" style="grid-column: span 2;">
+                        <h3>Vencimientos esta Semana</h3>
+                        <ul id="weekly-list" class="deadline-list">
+                            <!-- JS inyectará aquí -->
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-kanban" class="view hidden">
+                <div class="dashboard-filters glass"
+                    style="margin-bottom: 1.5rem; padding: 1rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <div class="filter-group" style="flex: 1; min-width: 250px;">
+                        <input type="text" id="search-kanban" placeholder="🔍 Buscar documento..." class="glass"
+                            style="width: 100%; padding: 0.6rem; border-radius: 8px; color: var(--text-main); background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);">
+                    </div>
+                    <div class="filter-group">
+                        <label style="font-size: 0.8rem; color: var(--text-muted); margin-right: 0.5rem;">Área:</label>
+                        <select id="filter-area-kanban" class="glass"
+                            style="padding: 0.5rem; border-radius: 8px; color: var(--text-main); background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);">
+                            <option value="all">Todas</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="kanban-board" id="kanban-board">
+                    <div class="kanban-column" data-status="todo">
+                        <div class="column-header">Por Hacer</div>
+                        <div class="column-cards"></div>
+                    </div>
+                    <div class="kanban-column" data-status="in-progress">
+                        <div class="column-header">En Proceso</div>
+                        <div class="column-cards"></div>
+                    </div>
+                    <div class="kanban-column" data-status="review-ci">
+                        <div class="column-header">Revisado por CI</div>
+                        <div class="column-cards"></div>
+                    </div>
+                    <div class="kanban-column" data-status="review-area">
+                        <div class="column-header">Revisado por el área</div>
+                        <div class="column-cards"></div>
+                    </div>
+                    <div class="kanban-column" data-status="released">
+                        <div class="column-header">Liberado</div>
+                        <div class="column-cards"></div>
+                    </div>
+                    <div class="kanban-column" data-status="signed">
+                        <div class="column-header">Firmado</div>
+                        <div class="column-cards"></div>
+                    </div>
+                    <div class="kanban-column" data-status="intranet">
+                        <div class="column-header">Cargado a INTRANET</div>
+                        <div class="column-cards"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-gantt" class="view hidden">
+                <div class="dashboard-filters glass"
+                    style="margin-bottom: 1.5rem; padding: 1rem; display: flex; gap: 1rem; align-items: center;">
+                    <div class="filter-group" style="flex: 1; max-width: 300px;">
+                        <input type="text" id="search-gantt" placeholder="🔍 Buscar documento..." class="glass"
+                            style="width: 100%; padding: 0.6rem; border-radius: 8px; color: var(--text-main); background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);">
+                    </div>
+                    <div class="filter-group">
+                        <label style="font-size: 0.8rem; color: var(--text-muted); margin-right: 0.5rem;">Área:</label>
+                        <select id="filter-area-gantt" class="glass"
+                            style="padding: 0.5rem; border-radius: 8px; color: var(--text-main); background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);">
+                            <option value="all">Todas</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="gantt-container glass" style="padding: 1.5rem; overflow-x: auto;">
+                    <div class="gantt-header" id="gantt-timeline">
+                        <!-- Fechas dinámicas -->
+                    </div>
+                    <div class="gantt-body" id="gantt-chart">
+                        <!-- Barras dinámicas -->
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal para nuevo/editar documento -->
+    <div id="doc-modal" class="modal hidden">
+        <div class="modal-content glass">
+            <h2 id="modal-title">Nuevo Documento</h2>
+            <form id="doc-form">
+                <div class="form-group">
+                    <label>Nombre del Documento</label>
+                    <input type="text" id="doc-name" required>
+                </div>
+                <div class="form-group">
+                    <label>Área</label>
+                    <input type="text" id="doc-area" required>
+                </div>
+                <div class="form-group">
+                    <label>Fecha Inicio</label>
+                    <input type="date" id="doc-start-date" required>
+                </div>
+                <div class="form-group">
+                    <label>Fecha Compromiso</label>
+                    <input type="date" id="doc-target-date" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="close-modal" class="btn btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="context-menu" class="glass context-menu hidden">
+        <div class="menu-item delete" id="menu-delete-trigger">🗑️ Borrar documento</div>
+        <div class="delete-confirm hidden" id="delete-confirm-box">
+            <span style="font-size: 0.8rem; display: block; margin-bottom: 0.5rem;">¿Estás seguro?</span>
+            <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                <button class="confirm-btn yes" id="delete-yes">Sí</button>
+                <button class="confirm-btn no" id="delete-no">No</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="app.js"></script>
+    <script src="kanban.js"></script>
+    <script src="gantt.js"></script>
+    <script src="alerts.js"></script>
+</body>
+
+</html>

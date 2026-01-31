@@ -1,0 +1,9 @@
+# System Files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Local data (if any)
+*.log
