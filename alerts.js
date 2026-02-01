@@ -46,7 +46,20 @@ function updateAlerts() {
         }
     });
 
-    // 2. Monday (1) or Thursday (4) Reminders
+    // 2. Area Fully Released Alert
+    const areas = [...new Set(documents.map(doc => doc.area))];
+    areas.forEach(area => {
+        const areaDocs = documents.filter(doc => doc.area === area);
+        if (areaDocs.length > 0) {
+            const allReleased = areaDocs.every(doc => doc.status === 'released' || doc.status === 'intranet' || doc.status === 'signed');
+            if (allReleased) {
+                alertCount++;
+                addAlertItem(alertList, 'Área Completada', `Haz liberado a ${area}`, 'reminder');
+            }
+        }
+    });
+
+    // 3. Monday (1) or Thursday (4) Reminders
     if (dayOfWeek === 1 || dayOfWeek === 4) {
         const pendingDocs = documents.filter(doc => doc.status !== 'released' && doc.status !== 'intranet').length;
         if (pendingDocs > 0) {
