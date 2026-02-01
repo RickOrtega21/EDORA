@@ -2,11 +2,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
+    const employeeNumberInput = document.getElementById('employeeNumber');
+    const fullNameInput = document.getElementById('fullName');
     const passwordError = document.getElementById('passwordError');
     const submitBtn = document.getElementById('submitBtn');
     const toggleAuth = document.getElementById('toggleAuth');
     const toggleText = document.getElementById('toggleText');
     const loginSubtitle = document.querySelector('.login-subtitle');
+    const signupFields = document.querySelectorAll('.signup-field');
+
+    const VALID_EMPLOYEE_NUMBERS = ['1476', '1477', '1478', '1479'];
+    const CORPORATE_DOMAIN = '@latinoseguros.com.mx';
+    const ADMIN_EMAIL = 'ricardoortega341@gmail.com';
 
     let isLoginMode = true;
 
@@ -20,11 +27,15 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleText.textContent = '¿No tienes cuenta?';
             toggleAuth.textContent = 'Regístrate aquí';
             loginSubtitle.textContent = 'Eminent Documentary Reporting Assistant';
+            signupFields.forEach(f => f.classList.add('hidden'));
+            emailInput.placeholder = "usuario@latinoseguros.com.mx";
         } else {
             submitBtn.textContent = 'Crear Cuenta';
             toggleText.textContent = '¿Ya tienes cuenta?';
             toggleAuth.textContent = 'Inicia sesión';
-            loginSubtitle.textContent = 'Únete a EDORA y gestiona tu documentación';
+            loginSubtitle.textContent = 'Registro Corporativo Latino Seguros';
+            signupFields.forEach(f => f.classList.remove('hidden'));
+            emailInput.placeholder = "Tu correo corporativo";
         }
         passwordError.style.display = 'none';
         loginForm.reset();
@@ -33,14 +44,41 @@ document.addEventListener('DOMContentLoaded', () => {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const identifier = emailInput.value.trim();
+        const email = emailInput.value.trim();
         const password = passwordInput.value;
+        const employeeNumber = employeeNumberInput ? employeeNumberInput.value.trim() : '';
+        const fullName = fullNameInput ? fullNameInput.value.trim() : '';
 
-        // Validation: 5 characters minimum
+        // 1. Password length validation (5 chars)
         if (password.length < 5) {
             passwordError.textContent = 'La contraseña debe tener al menos 5 caracteres.';
             passwordError.style.display = 'block';
             return;
+        }
+
+        if (!isLoginMode) {
+            // REGISTRATION FILTERS
+            const isAdminException = email.toLowerCase() === ADMIN_EMAIL;
+
+            // 2. Domain verification (except for Admin)
+            if (!isAdminException && !email.toLowerCase().endsWith(CORPORATE_DOMAIN)) {
+                passwordError.textContent = `Solo se permiten correos finalizados en ${CORPORATE_DOMAIN}`;
+                passwordError.style.display = 'block';
+                return;
+            }
+
+            // 3. Employee Number Verification (except for Admin)
+            if (!isAdminException && !VALID_EMPLOYEE_NUMBERS.includes(employeeNumber)) {
+                passwordError.textContent = 'Número de empleado no válido para registro.';
+                passwordError.style.display = 'block';
+                return;
+            }
+
+            if (!isAdminException && (fullName === '' || employeeNumber === '')) {
+                passwordError.textContent = 'Por favor completa todos los campos de registro.';
+                passwordError.style.display = 'block';
+                return;
+            }
         }
 
         if (!window.supabaseClient) {
@@ -54,31 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
         passwordError.style.display = 'none';
 
         try {
-            let email = identifier;
-
-            // Handle "Name or Email" logic
-            // If it doesn't look like an email, try to find it in profiles
-            if (!identifier.includes('@')) {
-                const { data: profileData, error: profileError } = await window.supabaseClient
-                    .from('profiles')
-                    .select('email')
-                    .or(`full_name.ilike.${identifier},email.ilike.${identifier}`)
-                    .single();
-
-                if (profileError || !profileData) {
-                    if (isLoginMode) {
-                        throw new Error('No se encontró un usuario con ese nombre.');
-                    }
-                    // If signing up with a name, we still need an email for Supabase Auth.
-                    // For simplicity in this implementation, we'll ask for an email if they are signing up.
-                    if (!isLoginMode) {
-                        throw new Error('Para registrarte usa un correo electrónico válido.');
-                    }
-                } else {
-                    email = profileData.email;
-                }
-            }
-
             if (isLoginMode) {
                 // LOGIN
                 const { error: signInError } = await window.supabaseClient.auth.signInWithPassword({
@@ -90,13 +103,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = 'index.html';
 
             } else {
-                // SIGNUP
+                // SIGNUP (With MetaData)
                 const { data: signUpData, error: signUpError } = await window.supabaseClient.auth.signUp({
                     email: email,
                     password: password,
                     options: {
                         data: {
-                            full_name: identifier.split('@')[0] // Use part of email as default full_name if needed
+                            full_name: fullName || 'Admin User',
+                            employee_number: employeeNumber || '0000'
                         }
                     }
                 });
@@ -107,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.location.href = 'index.html';
                 } else {
                     passwordError.style.color = '#10b981';
-                    passwordError.textContent = '¡Cuenta creada! Revisa tu correo para confirmar (si está activado).';
+                    passwordError.textContent = '¡Verificación enviada! Revisa tu correo electrónico para validar tu cuenta.';
                     passwordError.style.display = 'block';
                 }
             }
