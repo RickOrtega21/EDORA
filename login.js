@@ -3,20 +3,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const passwordError = document.getElementById('passwordError');
-    const loginBtn = loginForm.querySelector('.login-btn');
+    const submitBtn = document.getElementById('submitBtn');
+    const toggleAuth = document.getElementById('toggleAuth');
+    const toggleText = document.getElementById('toggleText');
+    const loginSubtitle = document.querySelector('.login-subtitle');
 
-    // Remove the signup toggle since we'll do smart login/signup
-    const signupLink = document.querySelector('div[style*="margin-top: 1rem"]');
-    if (signupLink) signupLink.style.display = 'none';
+    let isLoginMode = true;
+
+    // Toggle between Login and Signup modes
+    toggleAuth.addEventListener('click', (e) => {
+        e.preventDefault();
+        isLoginMode = !isLoginMode;
+
+        if (isLoginMode) {
+            submitBtn.textContent = 'Ingresar';
+            toggleText.textContent = '¿No tienes cuenta?';
+            toggleAuth.textContent = 'Regístrate aquí';
+            loginSubtitle.textContent = 'Eminent Documentary Reporting Assistant';
+        } else {
+            submitBtn.textContent = 'Crear Cuenta';
+            toggleText.textContent = '¿Ya tienes cuenta?';
+            toggleAuth.textContent = 'Inicia sesión';
+            loginSubtitle.textContent = 'Únete a EDORA y gestiona tu documentación';
+        }
+        passwordError.style.display = 'none';
+        loginForm.reset();
+    });
 
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const email = emailInput.value.trim();
+        const identifier = emailInput.value.trim();
         const password = passwordInput.value;
 
-        if (password.length < 8) {
-            passwordError.textContent = 'La contraseña debe tener al menos 8 caracteres.';
+        // Validation: 5 characters minimum
+        if (password.length < 5) {
+            passwordError.textContent = 'La contraseña debe tener al menos 5 caracteres.';
             passwordError.style.display = 'block';
             return;
         }
@@ -27,58 +49,75 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        loginBtn.textContent = 'Procesando...';
-        loginBtn.disabled = true;
+        submitBtn.textContent = 'Procesando...';
+        submitBtn.disabled = true;
         passwordError.style.display = 'none';
 
         try {
-            // STEP 1: Try to Sign In
-            const { data: signInData, error: signInError } = await window.supabaseClient.auth.signInWithPassword({
-                email: email,
-                password: password,
-            });
+            let email = identifier;
 
-            if (signInError) {
-                console.log('SignIn failed, trying SignUp:', signInError.message);
+            // Handle "Name or Email" logic
+            // If it doesn't look like an email, try to find it in profiles
+            if (!identifier.includes('@')) {
+                const { data: profileData, error: profileError } = await window.supabaseClient
+                    .from('profiles')
+                    .select('email')
+                    .or(`full_name.ilike.${identifier},email.ilike.${identifier}`)
+                    .single();
 
-                // STEP 2: If SignIn fails (e.g. user not found), try to Sign Up
-                // Supabase doesn't always distinguish 'not found' from 'invalid password' for security,
-                // but we can try to create the account.
-                const { data: signUpData, error: signUpError } = await window.supabaseClient.auth.signUp({
+                if (profileError || !profileData) {
+                    if (isLoginMode) {
+                        throw new Error('No se encontró un usuario con ese nombre.');
+                    }
+                    // If signing up with a name, we still need an email for Supabase Auth.
+                    // For simplicity in this implementation, we'll ask for an email if they are signing up.
+                    if (!isLoginMode) {
+                        throw new Error('Para registrarte usa un correo electrónico válido.');
+                    }
+                } else {
+                    email = profileData.email;
+                }
+            }
+
+            if (isLoginMode) {
+                // LOGIN
+                const { error: signInError } = await window.supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password,
                 });
 
-                if (signUpError) {
-                    let msg = signUpError.message;
-                    if (msg.includes('already registered')) {
-                        msg = 'Correo o contraseña incorrectos.';
-                    } else if (msg.includes('Email not confirmed')) {
-                        msg = 'Debes confirmar tu correo o desactivar "Confirm Email" en Supabase.';
-                    }
-                    passwordError.textContent = msg;
-                    passwordError.style.display = 'block';
-                } else {
-                    // Success or confirmation needed
-                    if (signUpData.session) {
-                        window.location.href = 'index.html';
-                    } else {
-                        passwordError.style.color = '#10b981'; // Green for success msg
-                        passwordError.textContent = '¡Listo! Si activaste el login rápido en Supabase ya puedes entrar. Si no, revisa tu correo.';
-                        passwordError.style.display = 'block';
-                    }
-                }
-            } else {
-                // Login Success
+                if (signInError) throw signInError;
                 window.location.href = 'index.html';
+
+            } else {
+                // SIGNUP
+                const { data: signUpData, error: signUpError } = await window.supabaseClient.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            full_name: identifier.split('@')[0] // Use part of email as default full_name if needed
+                        }
+                    }
+                });
+
+                if (signUpError) throw signUpError;
+
+                if (signUpData.session) {
+                    window.location.href = 'index.html';
+                } else {
+                    passwordError.style.color = '#10b981';
+                    passwordError.textContent = '¡Cuenta creada! Revisa tu correo para confirmar (si está activado).';
+                    passwordError.style.display = 'block';
+                }
             }
         } catch (err) {
-            console.error('Fatal error:', err);
-            passwordError.textContent = 'Error de conexión inesperado.';
+            console.error('Auth error:', err);
+            passwordError.textContent = err.message || 'Error de autenticación.';
             passwordError.style.display = 'block';
         } finally {
-            loginBtn.textContent = 'Ingresar';
-            loginBtn.disabled = false;
+            submitBtn.textContent = isLoginMode ? 'Ingresar' : 'Crear Cuenta';
+            submitBtn.disabled = false;
         }
     });
 
