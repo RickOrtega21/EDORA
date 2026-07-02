@@ -6,6 +6,35 @@ let barChart = null;
 let pieChart = null;
 let intranetPieChart = null;
 let selectedDocId = null;
+let regBarChart = null;
+
+// Registry of the 23 Regulatory Documents and their Delivery Quarters
+const REGULATORY_DOCUMENTS = {
+    "manual de crédito": "Entrega en 3 Q",
+    "política para el adecuado empleo y aprovechamiento de los recursos": "Entrega en 3 Q",
+    "política de contratación de servicios con terceros": "Entrega en 3 Q",
+    "política general en materia de prestaciones de servicios y atención": "Entrega en 3 Q",
+    "política general de suscripción personas": "Entrega en 3 Q",
+    "política para el desarrollo y aprobación de nuevos productos": "Entrega en 3 Q",
+    "política de auditoría interna": "Entrega en 4 Q",
+    "estatutos comité de auditoría": "Entrega en 4 Q",
+    "política de inversiones": "Entrega en 4 Q",
+    "conflicto de interes": "Entrega en 4 Q",
+    "conflicto de interes ": "Entrega en 4 Q",
+    "código de conducta": "Entrega en 4 Q",
+    "política de evaluación a miembros del consejo de admon": "Entrega en 4 Q",
+    "manual de cumplimiento": "Entrega en 1 Q",
+    "manual de administración integral de riesgos (mair)": "Entrega en 1 Q",
+    "política de sostenibilidad": "Entrega en 1 Q",
+    "manual del sistema de gobierno corporativo": "Entrega en 1 Q",
+    "política de control interno": "Entrega en 1 Q",
+    "manual de reaseguro": "Entrega en 1 Q",
+    "política de precios de transferencia": "Entrega en 2 Q",
+    "política de la función actuarial": "Entrega en 2 Q",
+    "política de revelación de información": "Entrega en 2 Q",
+    "política de remuneraciones de directivos relevantes": "Entrega en 2 Q",
+    "política general de suscripción daños-autos": "Entrega en 2 Q"
+};
 
 // Register Chart.js plugin globally
 if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
@@ -49,6 +78,7 @@ viewButtons.forEach(btn => {
 
         if (btn.dataset.view === 'dashboard') updateDashboard();
         if (btn.dataset.view === 'kanban') renderKanban();
+        if (btn.dataset.view === 'regulatorio') updateRegulatorio();
         if (btn.dataset.view === 'gantt') renderGantt();
     });
 });
@@ -140,6 +170,7 @@ async function initApp() {
 
     updateDashboard();
     setupLogout();
+    checkRegulatoryAlerts();
 }
 
 function setupLogout() {
@@ -271,6 +302,7 @@ function updateDashboard() {
     if (typeof renderKanban === 'function' && !document.getElementById('view-kanban').classList.contains('hidden')) {
         renderKanban();
     }
+    updateRegulatorio();
 }
 
 function updateFilteringOptions() {
@@ -501,3 +533,222 @@ function updateStats() {
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
+
+// Update Regulatorio Stats, Table and Chart
+function updateRegulatorio() {
+    // Filter regulatory docs
+    const regDocs = documents.filter(doc => {
+        const cleanName = doc.name.trim().toLowerCase();
+        return REGULATORY_DOCUMENTS.hasOwnProperty(cleanName);
+    });
+
+    // Sort by quarter (1Q -> 2Q -> 3Q -> 4Q) and alphabetically
+    regDocs.sort((a, b) => {
+        const qA = REGULATORY_DOCUMENTS[a.name.trim().toLowerCase()] || "";
+        const qB = REGULATORY_DOCUMENTS[b.name.trim().toLowerCase()] || "";
+        
+        const numA = parseInt(qA.replace(/\D/g, "")) || 0;
+        const numB = parseInt(qB.replace(/\D/g, "")) || 0;
+        
+        if (numA !== numB) return numA - numB;
+        return a.name.localeCompare(b.name);
+    });
+
+    // Update Stats
+    const total = regDocs.length;
+    const pending = regDocs.filter(doc => !['released', 'signed', 'intranet'].includes(doc.status)).length;
+    const critical = regDocs.filter(doc => {
+        const targetDate = new Date(doc.targetDate);
+        const today = new Date();
+        const diffDays = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
+        return diffDays <= 5 && !['released', 'signed', 'intranet'].includes(doc.status);
+    }).length;
+
+    const statTotalEl = document.getElementById('reg-stat-total');
+    const statPendingEl = document.getElementById('reg-stat-pending');
+    const statCriticalEl = document.getElementById('reg-stat-critical');
+    
+    if (statTotalEl) statTotalEl.textContent = total;
+    if (statPendingEl) statPendingEl.textContent = pending;
+    if (statCriticalEl) statCriticalEl.textContent = critical;
+
+    // Render Table
+    const tableBody = document.getElementById('regulatorio-table-body');
+    if (tableBody) {
+        tableBody.innerHTML = '';
+        if (regDocs.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No hay documentos regulatorios</td></tr>`;
+        } else {
+            const statusLabels = {
+                'todo': 'Por Hacer',
+                'in-progress': 'En Proceso',
+                'review-ci': 'Revisado por CI',
+                'review-area': 'Revisado por el área',
+                'released': 'Liberado',
+                'signed': 'Firmado',
+                'intranet': 'Cargado a INTRANET'
+            };
+            
+            regDocs.forEach(doc => {
+                const cleanName = doc.name.trim().toLowerCase();
+                const trimestre = REGULATORY_DOCUMENTS[cleanName] || 'Sin especificar';
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight: 600;">${doc.name}</td>
+                    <td>${trimestre}</td>
+                    <td style="color: var(--accent-secondary); font-weight: 600;">${doc.area}</td>
+                    <td><span class="badge badge-${doc.status}">${statusLabels[doc.status] || doc.status}</span></td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+    }
+
+    // Render Bar Chart (identical to dashboard)
+    renderRegulatorioBarChart(regDocs);
+}
+
+// Render Regulatorio Bar Chart
+function renderRegulatorioBarChart(regDocs) {
+    const canvas = document.getElementById('regulatorioChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    const statusLabels = {
+        'todo': 'Por Hacer',
+        'in-progress': 'En Proceso',
+        'review-ci': 'Revisado por CI',
+        'review-area': 'Revisado por el área',
+        'released': 'Liberado',
+        'signed': 'Firmado',
+        'intranet': 'Cargado a INTRANET'
+    };
+    const data = Object.keys(statusLabels).map(key => regDocs.filter(doc => doc.status === key).length);
+    
+    if (regBarChart) regBarChart.destroy();
+    regBarChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.values(statusLabels),
+            datasets: [{
+                data: data,
+                backgroundColor: '#1a237e',
+                borderColor: '#1a237e',
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: 'rgba(0, 0, 0, 0.8)',
+                        font: { weight: 'bold' },
+                        stepSize: 1
+                    },
+                    grid: { color: '#e2e8f0' }
+                },
+                x: {
+                    ticks: {
+                        color: 'rgba(0, 0, 0, 0.8)',
+                        font: { weight: 'bold' }
+                    },
+                    grid: { display: false }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                datalabels: {
+                    anchor: 'center',
+                    align: 'center',
+                    color: '#ffffff',
+                    font: { weight: 'bold', size: 14 },
+                    formatter: (v) => v > 0 ? v : ''
+                }
+            }
+        }
+    });
+}
+
+// Check if any regulatory documents have start dates triggering the alert
+function checkRegulatoryAlerts() {
+    let todayStr;
+    const urlParams = new URLSearchParams(window.location.search);
+    const simDateParam = urlParams.get('simDate');
+
+    // Bypass sessionStorage limit if we are simulating today's date for verification
+    if (!simDateParam && sessionStorage.getItem('regulatoryAlertShown') === 'true') {
+        return;
+    }
+
+    if (simDateParam) {
+        todayStr = simDateParam;
+        console.log('Simulando fecha de hoy para alertas:', todayStr);
+    } else {
+        const localDate = new Date();
+        const y = localDate.getFullYear();
+        const m = String(localDate.getMonth() + 1).padStart(2, '0');
+        const d = String(localDate.getDate()).padStart(2, '0');
+        todayStr = `${y}-${m}-${d}`;
+        console.log('Fecha de hoy normal para alertas:', todayStr);
+    }
+
+    const alertsToTrigger = documents.filter(doc => {
+        const cleanName = doc.name.trim().toLowerCase();
+        const isRegulatory = REGULATORY_DOCUMENTS.hasOwnProperty(cleanName);
+        if (!isRegulatory) return false;
+        
+        return doc.startDate === todayStr;
+    });
+
+    if (alertsToTrigger.length > 0) {
+        showRegulatoryAlertModal(alertsToTrigger);
+    }
+}
+
+// Display the temporal regulatory warning popup modal
+function showRegulatoryAlertModal(alertDocs) {
+    const modal = document.getElementById('regulatory-alert-modal');
+    const list = document.getElementById('regulatory-alert-list');
+    const timerLabel = document.getElementById('regulatory-alert-timer');
+    const closeBtn = document.getElementById('close-regulatory-alert');
+
+    if (!modal || !list || !timerLabel || !closeBtn) return;
+
+    list.innerHTML = '';
+    alertDocs.forEach(doc => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="padding: 0.75rem; border-bottom: 1px solid var(--glass-border); font-weight: 600;">${doc.name}</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid var(--glass-border); color: var(--accent-secondary); font-weight: 600;">${doc.area}</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid var(--glass-border); color: var(--accent-error); font-weight: 700;">${doc.targetDate}</td>
+        `;
+        list.appendChild(tr);
+    });
+
+    sessionStorage.setItem('regulatoryAlertShown', 'true');
+    modal.classList.remove('hidden');
+
+    let timeLeft = 20;
+    timerLabel.textContent = `Auto-cierre en ${timeLeft}s`;
+
+    const countdownInterval = setInterval(() => {
+        timeLeft--;
+        if (timeLeft <= 0) {
+            clearInterval(countdownInterval);
+            modal.classList.add('hidden');
+        } else {
+            timerLabel.textContent = `Auto-cierre en ${timeLeft}s`;
+        }
+    }, 1000);
+
+    closeBtn.onclick = () => {
+        clearInterval(countdownInterval);
+        modal.classList.add('hidden');
+    };
+}
+

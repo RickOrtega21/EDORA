@@ -623,3 +623,89 @@ input::placeholder {
 .alert-list {
     list-style: none;
 }
+
+/* Custom Table Styles for Regulatorio view */
+.regulatorio-table-container {
+    margin-top: 0.75rem;
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+}
+
+.regulatorio-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    color: var(--text-main);
+    font-size: 0.85rem;
+}
+
+.regulatorio-table th,
+.regulatorio-table td {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.regulatorio-table th {
+    background: rgba(0, 0, 0, 0.02);
+    font-weight: 700;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.regulatorio-table tbody tr:hover {
+    background: rgba(0, 0, 0, 0.01);
+}
+
+.regulatorio-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Premium Badges for document stages in table */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-radius: 20px;
+    text-transform: capitalize;
+    letter-spacing: 0.02em;
+}
+
+.badge-todo {
+    background: rgba(100, 116, 139, 0.12);
+    color: #64748b;
+}
+
+.badge-in-progress {
+    background: rgba(57, 73, 171, 0.12);
+    color: var(--accent-secondary);
+}
+
+.badge-review-ci {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--accent-warning);
+}
+
+.badge-review-area {
+    background: rgba(217, 119, 6, 0.15);
+    color: #d97706;
+}
+
+.badge-released {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--accent-success);
+}
+
+.badge-signed {
+    background: rgba(4, 120, 87, 0.15);
+    color: #047857;
+}
+
+.badge-intranet {
+    background: rgba(0, 212, 255, 0.15);
+    color: #0369a1;
+}
