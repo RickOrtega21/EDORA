@@ -52,9 +52,10 @@ const closeModal = document.getElementById('close-modal');
 const docForm = document.getElementById('doc-form');
 
 const filterArea = document.getElementById('filter-area');
-const filterStage = document.getElementById('filter-stage');
+const filterRegulatory = document.getElementById('filter-regulatory');
 const filterAreaGantt = document.getElementById('filter-area-gantt');
 const filterAreaKanban = document.getElementById('filter-area-kanban');
+const filterRegulatoryKanban = document.getElementById('filter-regulatory-kanban');
 
 const contextMenu = document.getElementById('context-menu');
 const menuDeleteTrigger = document.getElementById('menu-delete-trigger');
@@ -287,9 +288,10 @@ deleteNo.addEventListener('click', () => {
 
 // Dashboard & Filtering
 if (filterArea) filterArea.addEventListener('change', updateDashboard);
-if (filterStage) filterStage.addEventListener('change', updateDashboard);
+if (filterRegulatory) filterRegulatory.addEventListener('change', updateDashboard);
 if (filterAreaGantt) filterAreaGantt.addEventListener('change', () => renderGantt());
 if (filterAreaKanban) filterAreaKanban.addEventListener('change', () => renderKanban());
+if (filterRegulatoryKanban) filterRegulatoryKanban.addEventListener('change', () => renderKanban());
 
 function updateDashboard() {
     updateFilteringOptions();
@@ -324,7 +326,7 @@ function updateFilteringOptions() {
 
 function renderBarChart() {
     const ctx = document.getElementById('dashboardChart').getContext('2d');
-    const filteredDocs = documents.filter(doc => (filterArea.value === 'all' || doc.area === filterArea.value) && (filterStage.value === 'all' || doc.status === filterStage.value));
+    const filteredDocs = documents.filter(doc => (filterArea.value === 'all' || doc.area === filterArea.value) && (filterRegulatory.value === 'all' || doc.status === filterRegulatory.value));
 
     // Update dynamic title
     const chartTitle = document.getElementById('bar-chart-title');

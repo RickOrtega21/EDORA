@@ -86,19 +86,20 @@
                         </select>
                     </div>
                     <div class="filter-group">
-                        <label style="font-size: 0.8rem; color: var(--text-muted); margin-right: 0.5rem;">Filtrar por
-                            Etapa:</label>
-                        <select id="filter-stage" class="glass"
-                            style="padding: 0.5rem; border-radius: 8px; color: var(--text-main); background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);">
-                            <option value="all">Todas</option>
-                            <option value="todo">Por Hacer</option>
-                            <option value="in-progress">En Proceso</option>
-                            <option value="review-ci">Revisado por CI</option>
-                            <option value="review-area">Revisado por el área</option>
-                            <option value="released">Liberado</option>
-                            <option value="intranet">Cargado a INTRANET</option>
-                        </select>
-                    </div>
+    <label style="font-size: 0.8rem; color: var(--text-muted); margin-right: 0.5rem;">
+        Filtrar por
+        Regulatorio:</label>
+    <select id="filter-regulatory" class="glass"
+        style="padding: 0.5rem; border-radius: 8px; color: var(--text-main); background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);">
+        <option value="all">Todas</option>
+        <option value="todo">Por Hacer</option>
+        <option value="in-progress">En Proceso</option>
+        <option value="review-ci">Revisado por CI</option>
+        <option value="review-area">Revisado por el área</option>
+        <option value="released">Liberado</option>
+        <option value="intranet">Cargado a INTRANET</option>
+    </select>
+</div>
                 </div>
 
                 <div class="stat-grid" style="margin-bottom: 1.5rem;">
@@ -175,12 +176,19 @@
                             style="width: 100%; padding: 0.6rem; border-radius: 8px; color: var(--text-main); background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);">
                     </div>
                     <div class="filter-group">
-                        <label style="font-size: 0.8rem; color: var(--text-muted); margin-right: 0.5rem;">Área:</label>
-                        <select id="filter-area-kanban" class="glass"
-                            style="padding: 0.5rem; border-radius: 8px; color: var(--text-main); background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);">
-                            <option value="all">Todas</option>
-                        </select>
-                    </div>
+    <label style="font-size: 0.8rem; color: var(--text-muted); margin-right: 0.5rem;">Área:</label>
+    <select id="filter-area-kanban" class="glass"
+        style="padding: 0.5rem; border-radius: 8px; color: var(--text-main); background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);">
+        <option value="all">Todas</option>
+    </select>
+</div>
+<div class="filter-group">
+    <label style="font-size: 0.8rem; color: var(--text-muted); margin-right: 0.5rem;">Regulatorio:</label>
+    <select id="filter-regulatory-kanban" class="glass"
+        style="padding: 0.5rem; border-radius: 8px; color: var(--text-main); background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);">
+        <option value="all">Todas</option>
+    </select>
+</div>
                 </div>
                 <div class="kanban-board" id="kanban-board">
                     <div class="kanban-column" data-status="todo">
