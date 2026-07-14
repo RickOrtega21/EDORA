@@ -106,7 +106,7 @@ async function saveDocs(newDoc = null, isDelete = false) {
                     start_date: newDoc.startDate,
                     target_date: newDoc.targetDate,
                     status: newDoc.status,
-                    source_type: 'upload'
+                    source_type: newDoc.relacion || 'upload'
                 };
 
                 console.log('Sincronizando con base global:', docToUpload.filename);
@@ -153,7 +153,9 @@ async function initApp() {
                         area: d.area,
                         startDate: d.start_date,
                         targetDate: d.target_date,
-                        status: d.status
+                        status: d.status,
+                        // source_type stores 'Regulatorio' if imported from Excel with that classification
+                        relacion: d.source_type && d.source_type.toLowerCase() === 'regulatorio' ? 'Regulatorio' : (d.source_type || '')
                     }));
                 } else if (data && data.length === 0) {
                     console.log('La base global está vacía. Usando local temporal para migración...');
@@ -223,7 +225,8 @@ excelInput.addEventListener('change', (e) => {
                 area: normalizedRow["área"] || normalizedRow["area"] || 'Sin área',
                 startDate: formatDate(normalizedRow["fecha inicio"] || normalizedRow["fecha de inicio"]),
                 targetDate: formatDate(normalizedRow["fecha compromiso"] || normalizedRow["fecha de compromiso"] || normalizedRow["fecha fin"]),
-                status: 'todo'
+                status: 'todo',
+                relacion: (normalizedRow["relacion con rr"] || normalizedRow["relación con rr"] || normalizedRow["relacion"] || '').toString().trim()
             };
             documents.push(newDoc);
             saveDocs(newDoc);
@@ -326,7 +329,11 @@ function updateFilteringOptions() {
 
 function renderBarChart() {
     const ctx = document.getElementById('dashboardChart').getContext('2d');
-    const filteredDocs = documents.filter(doc => (filterArea.value === 'all' || doc.area === filterArea.value) && (filterRegulatory.value === 'all' || doc.status === filterRegulatory.value));
+    const filteredDocs = documents.filter(doc => {
+        const matchesArea = filterArea.value === 'all' || doc.area === filterArea.value;
+        const matchesRegulatory = filterRegulatory.value === 'all' || (filterRegulatory.value === 'regulatorio' && isRegulatoryDoc(doc));
+        return matchesArea && matchesRegulatory;
+    });
 
     // Update dynamic title
     const chartTitle = document.getElementById('bar-chart-title');
@@ -537,12 +544,23 @@ function updateStats() {
 document.addEventListener('DOMContentLoaded', initApp);
 
 // Update Regulatorio Stats, Table and Chart
+function isRegulatoryDoc(doc) {
+    // Primary: check relacion field (set from Excel "RELACION CON RR" column)
+    if (doc.relacion && doc.relacion.toLowerCase().trim() === 'regulatorio') return true;
+    // Secondary: fuzzy name match against the known registry
+    const cleanName = (doc.name || '').trim().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip accents
+        .replace(/\s+/g, ' ');                             // normalize spaces
+    for (const key of Object.keys(REGULATORY_DOCUMENTS)) {
+        const cleanKey = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+        if (cleanName === cleanKey || cleanName.includes(cleanKey) || cleanKey.includes(cleanName)) return true;
+    }
+    return false;
+}
+
 function updateRegulatorio() {
-    // Filter regulatory docs
-    const regDocs = documents.filter(doc => {
-        const cleanName = doc.name.trim().toLowerCase();
-        return REGULATORY_DOCUMENTS.hasOwnProperty(cleanName);
-    });
+    // Filter regulatory docs using dual detection
+    const regDocs = documents.filter(doc => isRegulatoryDoc(doc));
 
     // Sort by quarter (1Q -> 2Q -> 3Q -> 4Q) and alphabetically
     regDocs.sort((a, b) => {

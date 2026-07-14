@@ -1,9 +1,11 @@
 function renderKanban() {
     const board = document.getElementById('kanban-board');
     const filterAreaKanban = document.getElementById('filter-area-kanban');
+    const filterRegulatoryKanban = document.getElementById('filter-regulatory-kanban');
     const searchKanban = document.getElementById('search-kanban');
 
     const selectedArea = filterAreaKanban ? filterAreaKanban.value : 'all';
+    const selectedRegulatory = filterRegulatoryKanban ? filterRegulatoryKanban.value : 'all';
     const searchQuery = searchKanban ? searchKanban.value.toLowerCase() : '';
 
     const columns = board.querySelectorAll('.column-cards');
@@ -13,7 +15,8 @@ function renderKanban() {
         const matchesArea = selectedArea === 'all' || doc.area === selectedArea;
         const name = doc.name || doc.nombre || '';
         const matchesSearch = name.toLowerCase().includes(searchQuery);
-        return matchesArea && matchesSearch;
+        const matchesRegulatory = selectedRegulatory === 'all' || (selectedRegulatory === 'regulatorio' && typeof isRegulatoryDoc === 'function' && isRegulatoryDoc(doc));
+        return matchesArea && matchesSearch && matchesRegulatory;
     });
 
     filteredDocs.forEach(doc => {
